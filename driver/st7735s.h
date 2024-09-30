@@ -37,7 +37,7 @@
 // #define ST7735_RAMRD 0x2E
 
 #define ST7735_SCRLAR 0x33 /* Scroll Area Set */
-// #define ST7735_COLMOD 0x3A
+#define ST7735_COLMOD 0x3A
 #define ST7735_MADCTL 0x36
 
 #define ST7735_VSCSAD 0x37 /* Vertical Scroll Start Address of RAM */
@@ -140,4 +140,6 @@ void ST7735S_DrawFastLine(uint8_t x, uint8_t y, uint8_t length, uint16_t colour,
                           uint8_t rot);
 void ST7735S_normalMode(void);
 
+void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
+                       int16_t h);
 #endif

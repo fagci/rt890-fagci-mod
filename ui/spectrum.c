@@ -19,7 +19,6 @@ static uint32_t stepsCount;
 static uint32_t currentStep;
 static uint32_t step;
 static uint32_t bw;
-static uint8_t exLen;
 
 static FRange range;
 
@@ -27,7 +26,6 @@ static DBmRange dBmRange = {-150, -40};
 
 static bool ticksRendered = false;
 
-static uint8_t wf[WF_YN][WF_XN] = {0};
 static uint16_t osy[MAX_POINTS] = {0};
 
 static uint8_t curX = MAX_POINTS / 2;
@@ -38,14 +36,29 @@ static const int16_t GRADIENT_PALETTE[] = {
     0x1b5f, 0x1f,   0x1f,   0x18,   0x13,   0xe,    0x9,
 };
 
+/* static const int16_t GRADIENT_PALETTE[] = {
+    0x0,    0x0,    0x0,    0x0,    0x0,    0x0,    0x0,    0x0,    0x0,
+    0x0,    0x0,    0x800,  0x1000, 0x1000, 0x1800, 0x2000, 0x2000, 0x2800,
+    0x3000, 0x3000, 0x3800, 0x4000, 0x4800, 0x4800, 0x5000, 0x5000, 0x5800,
+    0x6000, 0x6800, 0x6800, 0x7000, 0x7800, 0x7800, 0x8000, 0x8800, 0x8820,
+    0x9061, 0x98a1, 0xa0e2, 0xa922, 0xb163, 0xb9a3, 0xc1e4, 0xca24, 0xd265,
+    0xdaa5, 0xe2e6, 0xeb26, 0xf367, 0xfb87, 0xf3c8, 0xebe9, 0xe42a, 0xdc4b,
+    0xd46c, 0xc48c, 0xbcad, 0xb4ee, 0xad0f, 0x9d30, 0x9551, 0x8d92, 0x85b3,
+    0x75d4, 0x6df5, 0x6636, 0x5e57, 0x4e78, 0x4699, 0x3eda, 0x36fb, 0x271c,
+    0x1f3d, 0x177e, 0xf9f,  0x79f,  0x77f,  0x75f,  0x71f,  0x6ff,  0x6df,
+    0x6bf,  0x67f,  0x65f,  0x63f,  0x61f,  0x5ff,  0x5df,  0x59f,  0x57f,
+    0x55f,  0x53f,  0x4ff,  0x4df,  0x4bf,  0x49f,  0x47f,  0x43f,  0x41f,
+    0x3ff,  0x3df,  0x39f,  0x37f,  0x35f,  0x33f,  0x31f,  0x2ff,  0x2bf,
+    0x29f,  0x27f,  0x25f,  0x21f,  0x1ff,  0x1df,  0x1bf,  0x19f,  0x15f,
+    0x13f,  0x11f,  0xff,   0xbf,   0x9f,   0x7f,   0x5f,   0x3f,   0x319f,
+    0x9c9f, 0xffbf}; */
+
 static uint8_t getPalIndex(uint16_t rssi) {
   return ConvertDomain(Rssi2DBm(rssi), dBmRange.min, dBmRange.max, 0,
                        ARRAY_SIZE(GRADIENT_PALETTE) - 1);
 }
 
 static uint16_t v(uint8_t x) { return rssiHistory[x]; }
-
-static uint32_t ceilDiv(uint32_t a, uint32_t b) { return (a + b - 1) / b; }
 
 static uint32_t ClampF(uint32_t v, uint32_t min, uint32_t max) {
   return v <= min ? min : (v >= max ? max : v);
@@ -60,9 +73,6 @@ static uint32_t ConvertDomainF(uint32_t aValue, uint32_t aMin, uint32_t aMax,
 }
 
 void SP_ResetHistory(void) {
-  for (uint8_t y = 0; y < ARRAY_SIZE(wf); ++y) {
-    memset(wf[y], 0, ARRAY_SIZE(wf[0]));
-  }
   for (uint8_t i = 0; i < MAX_POINTS; ++i) {
     osy[i] = rssiHistory[i] = 0;
     noiseHistory[i] = UINT16_MAX;
@@ -94,8 +104,6 @@ void SP_Init(FRange *r, uint32_t stepSize, uint32_t _bw) {
   bw = _bw;
   range = *r;
   stepsCount = (r->end - r->start) / stepSize + 1;
-  exLen = ceilDiv(MAX_POINTS, stepsCount);
-  // todo: limit exLen to ConvertDomain bw
   SP_ResetHistory();
   SP_Begin();
   ticksRendered = false;
@@ -205,7 +213,7 @@ static void renderBar(uint8_t sy, uint16_t *data, uint8_t i, bool fill) {
   }
 }
 
-static void renderWf(uint16_t *data, uint8_t i) {
+/* static void renderWf(uint16_t *data, uint8_t i) {
   Bar b = bar(data, i);
   for (uint8_t i = b.sx; i < b.sx + b.w; ++i) {
     if (i % 2 == 0) {
@@ -215,7 +223,7 @@ static void renderWf(uint16_t *data, uint8_t i) {
       wf[0][i / 2] |= getPalIndex(b.v) << 4;
     }
   }
-}
+} */
 
 void SP_Render(FRange *p, uint8_t sy, uint8_t sh) {
   const uint16_t rssiMin = Min(rssiHistory, filledPoints);
@@ -245,31 +253,46 @@ void SP_Render(FRange *p, uint8_t sy, uint8_t sh) {
   DISPLAY_ResetWindow();
 }
 
+static uint16_t pxBuf[MAX_POINTS] = {0};
+
 void WF_Render(bool wfDown) {
-  const uint8_t YN = ARRAY_SIZE(wf);
-  const uint8_t XN = ARRAY_SIZE(wf[0]);
   if (wfDown) {
-    for (uint8_t y = YN - 1; y > 0; --y) {
+    /* for (uint8_t y = YN - 1; y > 0; --y) {
       memcpy(wf[y], wf[y - 1], XN);
     }
 
-    memset(wf[0], 0, WF_XN);
+    memset(wf[0], 0, WF_XN); */
 
-    for (uint32_t f = range.start; f <= range.end; f += step) {
+    /* for (uint32_t f = range.start; f <= range.end; f += step) {
       renderWf(rssiHistory, f2x(f));
+    } */
+
+    for (uint8_t y = 11; y < WF_YN + 11; ++y) {
+      ST7735S_ReadPixels(0, y + 1, pxBuf, MAX_POINTS, 1);
+      ST7735S_SetAddrWindow(0, y, MAX_POINTS - 1, y);
+      for (uint8_t i = 0; i < MAX_POINTS; ++i) {
+        ST7735S_SendU16(pxBuf[i]);
+      }
     }
   }
 
-  ST7735S_SetAddrWindow(0, 11, MAX_POINTS - 1, 11 + YN - 1);
+  ST7735S_SetAddrWindow(0, 11 + WF_YN - 1, MAX_POINTS - 1, 11 + WF_YN - 1);
 
-  for (uint8_t x = 0; x < XN; ++x) {
+  for (uint32_t f = range.start; f <= range.end; f += step) {
+    Bar b = bar(rssiHistory, f2x(f));
+    for (uint8_t xx = b.sx; xx < b.sx + b.w; ++xx) {
+      DrawHLine(xx, 11 + WF_YN - 1, b.w, GRADIENT_PALETTE[getPalIndex(b.v)]);
+    }
+  }
+
+  /* for (uint8_t x = 0; x < XN; ++x) {
     for (int8_t y = YN - 1; y >= 0; --y) {
       ST7735S_SendU16(GRADIENT_PALETTE[wf[y][x] & 0xF]);
     }
     for (int8_t y = YN - 1; y >= 0; --y) {
       ST7735S_SendU16(GRADIENT_PALETTE[(wf[y][x] >> 4) & 0xF]);
     }
-  }
+  } */
 }
 
 void SP_RenderArrow(FRange *p, uint32_t f, uint8_t sx, uint8_t sy, uint8_t sh) {

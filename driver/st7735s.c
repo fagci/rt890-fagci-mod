@@ -18,6 +18,31 @@
 #include "../driver/delay.h"
 #include "../driver/pins.h"
 #include "../ui/gfx.h"
+#include "bsp/gpio.h"
+
+static void Delay(volatile uint8_t Counter) {
+  while (Counter-- > 0) {
+  }
+}
+static void setReadDir() {
+  gpio_init_type init;
+
+  gpio_default_para_init_ex(&init);
+  init.gpio_pins = BOARD_GPIOA_LCD_SDA;
+  init.gpio_mode = GPIO_MODE_INPUT;
+  init.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
+  gpio_init(GPIOA, &init);
+}
+
+static void setWriteDir() {
+  gpio_init_type init;
+
+  gpio_default_para_init_ex(&init);
+  init.gpio_pins = BOARD_GPIOA_LCD_SDA;
+  init.gpio_mode = GPIO_MODE_OUTPUT;
+  init.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
+  gpio_init(GPIOA, &init);
+}
 
 static void SendByte(uint8_t Data) {
   uint8_t i;
@@ -32,6 +57,82 @@ static void SendByte(uint8_t Data) {
     gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
     Data <<= 1;
   }
+}
+
+static uint8_t ReadByte() {
+  uint8_t i;
+  uint8_t Data = 0;
+
+  // setReadDir();
+
+  gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+  for (i = 0; i < 8; i++) {
+    Data <<= 1;
+    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
+    if (gpio_input_data_bit_read(GPIOA, BOARD_GPIOA_LCD_SDA)) {
+      Data |= 1;
+    }
+    Delay(10);
+    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+    Delay(10);
+  }
+
+  // setWriteDir();
+
+  return Data;
+}
+
+static uint16_t ReadWord() {
+  uint8_t i;
+  uint16_t Data = 0;
+
+  // setReadDir();
+
+  gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+  for (i = 0; i < 16; i++) {
+    Data <<= 1;
+    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
+    if (gpio_input_data_bit_read(GPIOA, BOARD_GPIOA_LCD_SDA)) {
+      Data |= 1;
+    }
+    // Delay(10);
+    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+    // Delay(10);
+  }
+
+  // setWriteDir();
+
+  return Data;
+}
+
+void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
+                        int16_t h) {
+  int16_t n = w * h;
+  TMR1->ctrl1_bit.tmren = false;
+  ST7735S_SendCommand(ST7735S_CMD_COLMOD);
+  ST7735S_SendData(0x66);
+  ST7735S_SetAddrWindow(x, y, x + w - 1, y + h - 1);
+  ST7735S_SendCommand(ST7735S_CMD_RAMRD);
+  Delay(10);
+  gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+  gpio_bits_reset(GPIOC, BOARD_GPIOC_LCD_CS);
+  setReadDir();
+  ReadByte();
+  // while (n > 0) {
+  while (n) {
+    if (true) {
+      *block++ = COLOR_RGB(ReadByte(), ReadByte(), ReadByte());
+    } else {
+      *block++ = ReadWord();
+    }
+    n--;
+  }
+  // }
+  gpio_bits_set(GPIOC, BOARD_GPIOC_LCD_CS);
+  setWriteDir();
+  ST7735S_SendCommand(ST7735S_CMD_COLMOD);
+  ST7735S_SendData(0x55);
+  TMR1->ctrl1_bit.tmren = true;
 }
 
 static void WritePixel(uint16_t Color) {
