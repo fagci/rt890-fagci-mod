@@ -105,33 +105,64 @@ static uint16_t ReadWord() {
   return Data;
 }
 
+static uint16_t ReadPixel() {
+  uint8_t i;
+  uint32_t Data = 0;
+
+  // setReadDir();
+
+  // gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+  for (i = 0; i < 21; i++) {
+    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+    Data =
+        Data << 1 | (gpio_input_data_bit_read(GPIOA, BOARD_GPIOA_LCD_SDA) & 1);
+    Delay(10);
+    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
+    Delay(10);
+  }
+  for (uint8_t i = 0; i < 6 / 2; ++i) {
+    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
+  }
+
+  // setWriteDir();
+  return ((Data >> 5) & 0xf800) | ((Data >> 2) & 0x7e0) | (Data & 0x1f);
+}
+
 void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
                         int16_t h) {
   int16_t n = w * h;
   TMR1->ctrl1_bit.tmren = false;
-  ST7735S_SendCommand(ST7735S_CMD_COLMOD);
-  ST7735S_SendData(0x66);
+  /* ST7735S_SendCommand(ST7735S_CMD_COLMOD);
+  ST7735S_SendData(0x66); */
   ST7735S_SetAddrWindow(x, y, x + w - 1, y + h - 1);
   ST7735S_SendCommand(ST7735S_CMD_RAMRD);
   Delay(10);
-  gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+  // gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
   gpio_bits_reset(GPIOC, BOARD_GPIOC_LCD_CS);
   setReadDir();
-  ReadByte();
+  // ReadByte();
+  for (uint8_t i = 0; i < 18 / 2; ++i) {
+    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
+  }
+
   // while (n > 0) {
   while (n) {
-    if (true) {
+    if (false) {
       *block++ = COLOR_RGB(ReadByte(), ReadByte(), ReadByte());
     } else {
-      *block++ = ReadWord();
+      if (0)
+        *block++ = ReadWord();
+      *block++ = ReadPixel();
     }
     n--;
   }
   // }
   gpio_bits_set(GPIOC, BOARD_GPIOC_LCD_CS);
   setWriteDir();
-  ST7735S_SendCommand(ST7735S_CMD_COLMOD);
-  ST7735S_SendData(0x55);
+  /* ST7735S_SendCommand(ST7735S_CMD_COLMOD);
+  ST7735S_SendData(0x55); */
   TMR1->ctrl1_bit.tmren = true;
 }
 

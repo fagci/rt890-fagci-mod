@@ -277,22 +277,16 @@ void WF_Render(bool wfDown) {
   }
 
   ST7735S_SetAddrWindow(0, 11 + WF_YN - 1, MAX_POINTS - 1, 11 + WF_YN - 1);
-
+  for (uint8_t i = 0; i < MAX_POINTS; ++i) {
+    ST7735S_SendU16(i % 10 == 0 ? COLOR_FOREGROUND : COLOR_BACKGROUND);
+  }
+  return;
   for (uint32_t f = range.start; f <= range.end; f += step) {
     Bar b = bar(rssiHistory, f2x(f));
     for (uint8_t xx = b.sx; xx < b.sx + b.w; ++xx) {
       DrawHLine(xx, 11 + WF_YN - 1, b.w, GRADIENT_PALETTE[getPalIndex(b.v)]);
     }
   }
-
-  /* for (uint8_t x = 0; x < XN; ++x) {
-    for (int8_t y = YN - 1; y >= 0; --y) {
-      ST7735S_SendU16(GRADIENT_PALETTE[wf[y][x] & 0xF]);
-    }
-    for (int8_t y = YN - 1; y >= 0; --y) {
-      ST7735S_SendU16(GRADIENT_PALETTE[(wf[y][x] >> 4) & 0xF]);
-    }
-  } */
 }
 
 void SP_RenderArrow(FRange *p, uint32_t f, uint8_t sx, uint8_t sy, uint8_t sh) {
