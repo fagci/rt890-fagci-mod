@@ -257,16 +257,6 @@ static uint16_t pxBuf[MAX_POINTS] = {0};
 
 void WF_Render(bool wfDown) {
   if (wfDown) {
-    /* for (uint8_t y = YN - 1; y > 0; --y) {
-      memcpy(wf[y], wf[y - 1], XN);
-    }
-
-    memset(wf[0], 0, WF_XN); */
-
-    /* for (uint32_t f = range.start; f <= range.end; f += step) {
-      renderWf(rssiHistory, f2x(f));
-    } */
-
     for (uint8_t y = 11; y < WF_YN + 11; ++y) {
       ST7735S_ReadPixels(0, y + 1, pxBuf, MAX_POINTS, 1);
       ST7735S_SetAddrWindow(0, y, MAX_POINTS - 1, y);
@@ -280,7 +270,7 @@ void WF_Render(bool wfDown) {
   for (uint8_t i = 0; i < MAX_POINTS; ++i) {
     ST7735S_SendU16(i % 10 == 0 ? COLOR_FOREGROUND : COLOR_BACKGROUND);
   }
-  return;
+  // return;
   for (uint32_t f = range.start; f <= range.end; f += step) {
     Bar b = bar(rssiHistory, f2x(f));
     for (uint8_t xx = b.sx; xx < b.sx + b.w; ++xx) {

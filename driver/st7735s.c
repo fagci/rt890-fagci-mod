@@ -15,15 +15,31 @@
  */
 
 #include "st7735s.h"
+#include "../bsp/gpio.h"
 #include "../driver/delay.h"
 #include "../driver/pins.h"
 #include "../ui/gfx.h"
-#include "bsp/gpio.h"
 
-static void Delay(volatile uint8_t Counter) {
+/* static void Delay(volatile uint8_t Counter) {
   while (Counter-- > 0) {
   }
+} */
+
+static bool clkState = true;
+
+static void clk() {
+  clkState ^= 1;
+  if (clkState) {
+    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
+  } else {
+    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+  }
 }
+
+static bool sda() {
+  return gpio_input_data_bit_read(GPIOA, BOARD_GPIOA_LCD_SDA);
+}
+
 static void setReadDir() {
   gpio_init_type init;
 
@@ -53,31 +69,22 @@ static void SendByte(uint8_t Data) {
     } else {
       gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SDA);
     }
-    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
-    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
+    clk();
+    clk();
     Data <<= 1;
   }
 }
 
-static uint8_t ReadByte() {
+/* static uint8_t ReadByte() {
   uint8_t i;
   uint8_t Data = 0;
 
-  // setReadDir();
-
-  gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+  clk();
   for (i = 0; i < 8; i++) {
-    Data <<= 1;
-    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
-    if (gpio_input_data_bit_read(GPIOA, BOARD_GPIOA_LCD_SDA)) {
-      Data |= 1;
-    }
-    Delay(10);
-    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
-    Delay(10);
+    clk();
+    Data = Data << 1 | sda();
+    clk();
   }
-
-  // setWriteDir();
 
   return Data;
 }
@@ -86,84 +93,56 @@ static uint16_t ReadWord() {
   uint8_t i;
   uint16_t Data = 0;
 
-  // setReadDir();
-
-  gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
+  clk();
   for (i = 0; i < 16; i++) {
-    Data <<= 1;
-    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
-    if (gpio_input_data_bit_read(GPIOA, BOARD_GPIOA_LCD_SDA)) {
-      Data |= 1;
-    }
-    // Delay(10);
-    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
-    // Delay(10);
+    clk();
+    Data = Data << 1 | sda();
+    clk();
   }
-
-  // setWriteDir();
 
   return Data;
-}
+} */
 
 static uint16_t ReadPixel() {
-  uint8_t i;
   uint32_t Data = 0;
 
-  // setReadDir();
-
-  // gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
-  for (i = 0; i < 21; i++) {
-    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
-    Data =
-        Data << 1 | (gpio_input_data_bit_read(GPIOA, BOARD_GPIOA_LCD_SDA) & 1);
-    Delay(10);
-    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
-    Delay(10);
+  for (uint8_t i = 0; i < 21; i++) {
+    clk();
+    Data = Data << 1 | sda();
+    clk();
   }
-  for (uint8_t i = 0; i < 6 / 2; ++i) {
-    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
-    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
+  for (uint8_t i = 0; i < 6; ++i) {
+    clk();
   }
 
-  // setWriteDir();
   return ((Data >> 5) & 0xf800) | ((Data >> 2) & 0x7e0) | (Data & 0x1f);
 }
 
 void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
                         int16_t h) {
   int16_t n = w * h;
-  TMR1->ctrl1_bit.tmren = false;
+  // TMR1->ctrl1_bit.tmren = false;
   /* ST7735S_SendCommand(ST7735S_CMD_COLMOD);
   ST7735S_SendData(0x66); */
   ST7735S_SetAddrWindow(x, y, x + w - 1, y + h - 1);
   ST7735S_SendCommand(ST7735S_CMD_RAMRD);
-  Delay(10);
-  // gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
   gpio_bits_reset(GPIOC, BOARD_GPIOC_LCD_CS);
+  // Delay(10);
+
   setReadDir();
-  // ReadByte();
-  for (uint8_t i = 0; i < 18 / 2; ++i) {
-    gpio_bits_reset(GPIOA, BOARD_GPIOA_LCD_SCL);
-    gpio_bits_set(GPIOA, BOARD_GPIOA_LCD_SCL);
+  for (uint8_t i = 0; i < 18; ++i) {
+    clk();
   }
 
-  // while (n > 0) {
   while (n) {
-    if (false) {
-      *block++ = COLOR_RGB(ReadByte(), ReadByte(), ReadByte());
-    } else {
-      if (0)
-        *block++ = ReadWord();
-      *block++ = ReadPixel();
-    }
+    *block++ = ReadPixel();
     n--;
   }
-  // }
   gpio_bits_set(GPIOC, BOARD_GPIOC_LCD_CS);
   setWriteDir();
   /* ST7735S_SendCommand(ST7735S_CMD_COLMOD);
   ST7735S_SendData(0x55); */
-  TMR1->ctrl1_bit.tmren = true;
+  // TMR1->ctrl1_bit.tmren = true;
 }
 
 static void WritePixel(uint16_t Color) {
