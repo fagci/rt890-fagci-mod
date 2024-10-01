@@ -126,10 +126,10 @@ void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
   ST7735S_SendData(0x66); */
   ST7735S_SetAddrWindow(x, y, x + w - 1, y + h - 1);
   ST7735S_SendCommand(ST7735S_CMD_RAMRD);
-  gpio_bits_reset(GPIOC, BOARD_GPIOC_LCD_CS);
   // Delay(10);
 
   setReadDir();
+  gpio_bits_reset(GPIOC, BOARD_GPIOC_LCD_CS);
   for (uint8_t i = 0; i < 18; ++i) {
     clk();
   }
@@ -196,7 +196,7 @@ void ST7735S_Init(void) {
   // gColorBackground = COLOR_RGB(0, 0, 0);
   // gColorForeground = COLOR_RGB(31, 63, 31);
 
-  /* gpio_bits_set(GPIOF, GPIO_PINS_0);
+  gpio_bits_set(GPIOF, GPIO_PINS_0);
   DELAY_WaitMS(1);
 
   gpio_bits_reset(GPIOF, GPIO_PINS_0);
@@ -280,10 +280,11 @@ void ST7735S_Init(void) {
   ST7735S_SendCommand(ST7735S_CMD_COLMOD);
   ST7735S_SendData(0x05);
   DISPLAY_FillColor(COLOR_BACKGROUND);
-  ST7735S_SendCommand(ST7735S_CMD_DISPON); */
+  ST7735S_SendCommand(ST7735S_CMD_DISPON);
 
   gColorBackground = COLOR_RGB(0, 0, 0);
   gColorForeground = COLOR_RGB(31, 63, 31);
+    return;
 
   gpio_bits_set(GPIOF, GPIO_PINS_0);
   DELAY_WaitMS(1);
