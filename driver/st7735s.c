@@ -19,6 +19,7 @@
 #include "../driver/delay.h"
 #include "../driver/pins.h"
 #include "../ui/gfx.h"
+#include <stdbool.h>
 
 /* static void Delay(volatile uint8_t Counter) {
   while (Counter-- > 0) {
@@ -75,34 +76,6 @@ static void SendByte(uint8_t Data) {
   }
 }
 
-/* static uint8_t ReadByte() {
-  uint8_t i;
-  uint8_t Data = 0;
-
-  clk();
-  for (i = 0; i < 8; i++) {
-    clk();
-    Data = Data << 1 | sda();
-    clk();
-  }
-
-  return Data;
-}
-
-static uint16_t ReadWord() {
-  uint8_t i;
-  uint16_t Data = 0;
-
-  clk();
-  for (i = 0; i < 16; i++) {
-    clk();
-    Data = Data << 1 | sda();
-    clk();
-  }
-
-  return Data;
-} */
-
 static uint16_t ReadPixel() {
   uint32_t Data = 0;
 
@@ -115,15 +88,17 @@ static uint16_t ReadPixel() {
     clk();
   }
 
-  return ((Data >> 5) & 0xf800) | ((Data >> 2) & 0x7e0) | (Data & 0x1f);
+  uint16_t bgr = ((Data >> 5) & 0xf800) | ((Data >> 2) & 0x7e0) | (Data & 0x1f);
+
+  return COLOR_RGB((bgr >> 11) & 0x1f, (bgr >> 5) & 0x3f, (bgr) & 0x1f);
 }
 
 void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
                         int16_t h) {
   int16_t n = w * h;
   // TMR1->ctrl1_bit.tmren = false;
-  /* ST7735S_SendCommand(ST7735S_CMD_COLMOD);
-  ST7735S_SendData(0x66); */
+  ST7735S_SendCommand(ST7735S_CMD_COLMOD);
+  ST7735S_SendData(0x66);
   ST7735S_SetAddrWindow(x, y, x + w - 1, y + h - 1);
   ST7735S_SendCommand(ST7735S_CMD_RAMRD);
   // Delay(10);
@@ -140,8 +115,9 @@ void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
   }
   gpio_bits_set(GPIOC, BOARD_GPIOC_LCD_CS);
   setWriteDir();
-  /* ST7735S_SendCommand(ST7735S_CMD_COLMOD);
-  ST7735S_SendData(0x55); */
+
+  ST7735S_SendCommand(ST7735S_CMD_COLMOD);
+  ST7735S_SendData(0x05);
   // TMR1->ctrl1_bit.tmren = true;
 }
 
@@ -208,9 +184,12 @@ void ST7735S_Init(void) {
   ST7735S_SendCommand(ST7735S_CMD_SLPOUT);
   DELAY_WaitMS(120);
   ST7735S_SendCommand(ST7735S_CMD_FRMCTR1);
-  ST7735S_SendData(0x05);
+  /* ST7735S_SendData(0x05);
   ST7735S_SendData(0x3C);
-  ST7735S_SendData(0x3C);
+  ST7735S_SendData(0x3C); */
+  ST7735S_SendData(0x00);
+  ST7735S_SendData(0x06);
+  ST7735S_SendData(0x03);
   ST7735S_SendCommand(ST7735S_CMD_FRMCTR2);
   ST7735S_SendData(0x05);
   ST7735S_SendData(0x3C);
@@ -284,7 +263,7 @@ void ST7735S_Init(void) {
 
   gColorBackground = COLOR_RGB(0, 0, 0);
   gColorForeground = COLOR_RGB(31, 63, 31);
-    return;
+  return;
 
   gpio_bits_set(GPIOF, GPIO_PINS_0);
   DELAY_WaitMS(1);
