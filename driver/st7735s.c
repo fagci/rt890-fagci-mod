@@ -90,7 +90,7 @@ static uint16_t ReadPixel() {
 
   uint16_t bgr = ((Data >> 5) & 0xf800) | ((Data >> 2) & 0x7e0) | (Data & 0x1f);
 
-  return COLOR_RGB((bgr >> 11) & 0x1f, (bgr >> 5) & 0x3f, (bgr) & 0x1f);
+  return COLOR_RGB((bgr) & 0x1f, (bgr >> 5) & 0x3f, (bgr >> 11) & 0x1f);
 }
 
 void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
@@ -105,7 +105,7 @@ void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
 
   setReadDir();
   gpio_bits_reset(GPIOC, BOARD_GPIOC_LCD_CS);
-  for (uint8_t i = 0; i < 18; ++i) {
+  for (uint8_t i = 0; i < 2; ++i) {
     clk();
   }
 
