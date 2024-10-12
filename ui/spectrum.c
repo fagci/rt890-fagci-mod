@@ -26,18 +26,22 @@ static DBmRange dBmRange = {-150, -40};
 
 static bool ticksRendered = false;
 
+static uint16_t nsy[MAX_POINTS] = {0};
 static uint16_t osy[MAX_POINTS] = {0};
 
 static uint8_t curX = MAX_POINTS / 2;
 static uint8_t curSbWidth = 16;
 
-static const int16_t GRADIENT_PALETTE[] = {
-    0x2000, 0x3000, 0x5000, 0x9000, 0xfc44, 0xffbf, 0x7bf, 0x1b5f,
-    0x1b5f, 0x1f,   0x1f,   0x18,   0x13,   0xe,    0x9,
-};
+static uint16_t wfPxBuf[MAX_POINTS] = {0};
+static const uint8_t WF_CUR_Y = WF_YN + 11;
 
 /* static const int16_t GRADIENT_PALETTE[] = {
-    0x0,    0x0,    0x0,    0x0,    0x0,    0x0,    0x0,    0x0,    0x0,
+    0x2000, 0x3000, 0x5000, 0x9000, 0xfc44, 0xffbf, 0x7bf, 0x1b5f,
+    0x1b5f, 0x1f,   0x1f,   0x18,   0x13,   0xe,    0x9,
+}; */
+
+static const int16_t GRADIENT_PALETTE[] = {
+    // 0x0,    0x0,    0x0,    0x0,    0x0,    0x0,    0x0,    0x0,    0x0,
     0x0,    0x0,    0x800,  0x1000, 0x1000, 0x1800, 0x2000, 0x2000, 0x2800,
     0x3000, 0x3000, 0x3800, 0x4000, 0x4800, 0x4800, 0x5000, 0x5000, 0x5800,
     0x6000, 0x6800, 0x6800, 0x7000, 0x7800, 0x7800, 0x8000, 0x8800, 0x8820,
@@ -51,7 +55,7 @@ static const int16_t GRADIENT_PALETTE[] = {
     0x3ff,  0x3df,  0x39f,  0x37f,  0x35f,  0x33f,  0x31f,  0x2ff,  0x2bf,
     0x29f,  0x27f,  0x25f,  0x21f,  0x1ff,  0x1df,  0x1bf,  0x19f,  0x15f,
     0x13f,  0x11f,  0xff,   0xbf,   0x9f,   0x7f,   0x5f,   0x3f,   0x319f,
-    0x9c9f, 0xffbf}; */
+    0x9c9f, 0xffbf};
 
 static uint8_t getPalIndex(uint16_t rssi) {
   return ConvertDomain(Rssi2DBm(rssi), dBmRange.min, dBmRange.max, 0,
@@ -204,24 +208,12 @@ static Bar bar(uint16_t *data, uint8_t i) {
   return (Bar){sx, w, data[i]};
 }
 
-static void renderBar(uint8_t sy, uint16_t *data, uint8_t i, bool fill) {
-  Bar b = bar(data, i);
+/* static void renderBar(uint8_t sy, uint16_t *data, uint8_t i, bool fill) {
   if (needRedraw[i]) {
     needRedraw[i] = false;
+    Bar b = bar(data, i);
     DISPLAY_DrawRectangle1Nr(b.sx, sy, b.v, b.w,
                              fill ? COLOR_FOREGROUND : COLOR_BACKGROUND);
-  }
-}
-
-/* static void renderWf(uint16_t *data, uint8_t i) {
-  Bar b = bar(data, i);
-  for (uint8_t i = b.sx; i < b.sx + b.w; ++i) {
-    if (i % 2 == 0) {
-      wf[0][i / 2] = getPalIndex(b.v);
-    } else {
-      wf[0][i / 2] &= 0x0F;
-      wf[0][i / 2] |= getPalIndex(b.v) << 4;
-    }
   }
 } */
 
@@ -232,51 +224,55 @@ void SP_Render(FRange *p, uint8_t sy, uint8_t sh) {
 
   const uint16_t vMin = rssiMin - 1;
   const uint16_t vMax =
-      rssiMax + Clamp((rssiMax - noiseFloor), 40, rssiMax - noiseFloor);
+      rssiMax + Clamp((rssiMax - noiseFloor), 35, rssiMax - noiseFloor);
 
   dBmRange.min = Rssi2DBm(vMin);
   dBmRange.max = Rssi2DBm(vMax);
 
-  memset(needRedraw, true, MAX_POINTS);
+  for (uint32_t f = range.start; f <= range.end; f += step) {
+    uint8_t i = f2x(f);
+    nsy[i] = ConvertDomain(v(i) * 2, vMin * 2, vMax * 2, 0, sh);
+  }
 
   for (uint32_t f = range.start; f <= range.end; f += step) {
     uint8_t i = f2x(f);
-    uint8_t yVal = ConvertDomain(v(i) * 2, vMin * 2, vMax * 2, 0, sh);
-    renderBar(sy, osy, i, false);
-    osy[i] = yVal;
+    Bar bo = bar(osy, i);
+    Bar bn = bar(nsy, i);
+    if (bn.v < bo.v) {
+      DISPLAY_DrawRectangle1Nr(bn.sx, sy + bn.v, bo.v - bn.v, bn.w,
+                               COLOR_BACKGROUND);
+    }
   }
+  // DISPLAY_ResetWindow();
   SP_DrawTicks(sy, sh, p);
-  memset(needRedraw, true, MAX_POINTS);
   for (uint32_t f = range.start; f <= range.end; f += step) {
-    renderBar(sy, osy, f2x(f), true);
+    uint8_t i = f2x(f);
+    Bar b = bar(nsy, i);
+    DISPLAY_DrawRectangle1Nr(b.sx, sy, b.v, b.w, COLOR_FOREGROUND);
+  }
+  for (uint8_t i = 0; i < MAX_POINTS; ++i) {
+    osy[i] = nsy[i];
   }
   DISPLAY_ResetWindow();
 }
 
-static uint16_t pxBuf[MAX_POINTS] = {0};
-
 void WF_Render(bool wfDown) {
   if (wfDown) {
-    for (uint8_t y = 11; y < WF_YN + 11; ++y) {
-      ST7735S_ReadPixels(0, y + 1, pxBuf, MAX_POINTS, 1);
+    for (uint8_t y = 11; y < WF_CUR_Y; ++y) {
+      ST7735S_ReadPixels(0, y + 1, wfPxBuf, MAX_POINTS, 1);
       ST7735S_SetAddrWindow(0, y, MAX_POINTS - 1, y);
       for (uint8_t i = 0; i < MAX_POINTS; ++i) {
-        ST7735S_SendU16(pxBuf[i]);
+        ST7735S_SendU16(wfPxBuf[i]);
       }
     }
   }
 
-  ST7735S_SetAddrWindow(0, 11 + WF_YN - 1, MAX_POINTS - 1, 11 + WF_YN - 1);
-  for (uint8_t i = 0; i < MAX_POINTS; ++i) {
-    ST7735S_SendU16(i % 10 == 0 ? COLOR_FOREGROUND : COLOR_BACKGROUND);
-  }
-  // return;
   for (uint32_t f = range.start; f <= range.end; f += step) {
-    Bar b = bar(rssiHistory, f2x(f));
-    for (uint8_t xx = b.sx; xx < b.sx + b.w; ++xx) {
-      DrawHLine(xx, 11 + WF_YN - 1, b.w, GRADIENT_PALETTE[getPalIndex(b.v)]);
-    }
+    const Bar b = bar(rssiHistory, f2x(f));
+    const uint16_t color = GRADIENT_PALETTE[getPalIndex(b.v)];
+    DISPLAY_DrawRectangle1Nr(b.sx, WF_CUR_Y - 1, 1, b.w, color);
   }
+  DISPLAY_ResetWindow();
 }
 
 void SP_RenderArrow(FRange *p, uint32_t f, uint8_t sx, uint8_t sy, uint8_t sh) {

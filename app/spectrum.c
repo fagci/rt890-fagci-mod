@@ -259,7 +259,6 @@ static void renderNumbers() {
 static void render(bool wfDown) {
   SP_Render(rangePeek(), 62, 30);
   WF_Render(wfDown);
-  CUR_Render(56);
 
   renderNumbers();
 
@@ -292,6 +291,7 @@ static void init() {
   msm.f = rangePeek()->start;
   SP_Init(rangePeek(), step, bw);
   CUR_Reset();
+  CUR_Render(56);
 
   running = true;
 
