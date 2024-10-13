@@ -21,11 +21,6 @@
 #include "../ui/gfx.h"
 #include <stdbool.h>
 
-/* static void Delay(volatile uint8_t Counter) {
-  while (Counter-- > 0) {
-  }
-} */
-
 static bool clkState = true;
 
 static void clk() {
@@ -96,12 +91,11 @@ static uint16_t ReadPixel() {
 void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
                         int16_t h) {
   int16_t n = w * h;
-  // TMR1->ctrl1_bit.tmren = false;
+  TMR1->ctrl1_bit.tmren = false;
   ST7735S_SendCommand(ST7735S_CMD_COLMOD);
   ST7735S_SendData(0x66);
   ST7735S_SetAddrWindow(x, y, x + w - 1, y + h - 1);
   ST7735S_SendCommand(ST7735S_CMD_RAMRD);
-  // Delay(10);
 
   setReadDir();
   gpio_bits_reset(GPIOC, BOARD_GPIOC_LCD_CS);
@@ -118,7 +112,7 @@ void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
 
   ST7735S_SendCommand(ST7735S_CMD_COLMOD);
   ST7735S_SendData(0x05);
-  // TMR1->ctrl1_bit.tmren = true;
+  TMR1->ctrl1_bit.tmren = true;
 }
 
 static void WritePixel(uint16_t Color) {

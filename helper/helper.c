@@ -14,11 +14,11 @@
  *     limitations under the License.
  */
 
-#include "helper/helper.h"
-#include "driver/pins.h"
-#include "misc.h"
-#include "radio/scheduler.h"
-#include "radio/settings.h"
+#include "helper.h"
+#include "../driver/pins.h"
+#include "../misc.h"
+#include "../radio/scheduler.h"
+#include "../radio/settings.h"
 
 char gShortString[10];
 
@@ -65,13 +65,14 @@ void STANDBY_BlinkGreen(void) {
   }
 }
 
-long long Clamp(long long v, long long min, long long max) {
+int64_t Clamp(int64_t v, int64_t min, int64_t max) {
   return v <= min ? min : (v >= max ? max : v);
 }
 
-int ConvertDomain(int aValue, int aMin, int aMax, int bMin, int bMax) {
-  const int aRange = aMax - aMin;
-  const int bRange = bMax - bMin;
+int64_t ConvertDomain(int64_t aValue, int64_t aMin, int64_t aMax, int64_t bMin,
+                      int64_t bMax) {
+  const int64_t aRange = aMax - aMin;
+  const int64_t bRange = bMax - bMin;
   aValue = Clamp(aValue, aMin, aMax);
   return ((aValue - aMin) * bRange + aRange / 2) / aRange + bMin;
 }

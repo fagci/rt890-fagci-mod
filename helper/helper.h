@@ -26,8 +26,9 @@ uint16_t TIMER_Calculate(uint16_t Setting);
 void SCREEN_TurnOn(void);
 void STANDBY_BlinkGreen(void);
 
-long long Clamp(long long v, long long min, long long max);
-int ConvertDomain(int aValue, int aMin, int aMax, int bMin, int bMax);
+int64_t Clamp(int64_t v, int64_t min, int64_t max);
+int64_t ConvertDomain(int64_t aValue, int64_t aMin, int64_t aMax, int64_t bMin,
+                      int64_t bMax);
 
 int Mid(uint16_t *array, uint8_t n);
 int Min(uint16_t *array, uint8_t n);

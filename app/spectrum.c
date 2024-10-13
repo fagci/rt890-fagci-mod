@@ -183,7 +183,7 @@ static inline void measure() {
     msm.open = isSquelchOpen();
   }
   LOOT_Update(&msm);
-  if (CUR_GetCenterF(rangePeek(), step) == msm.f) {
+  if (CUR_GetCenterF(step) == msm.f) {
     msmCoursor = msm;
     if (bb == BB_WATCH) {
       needRedrawNumbers = true;
@@ -230,9 +230,9 @@ static void renderNumbers() {
   case BB_CURSOR:
     DISPLAY_Fill(0, 159, 0, 10, COLOR_BACKGROUND);
 
-    FRange cursorBounds = CUR_GetRange(rangePeek(), step);
+    FRange cursorBounds = CUR_GetRange(step);
     drawF(cursorBounds.start, 2, 2, COLOR_YELLOW);
-    drawF(CUR_GetCenterF(rangePeek(), step), 58, 2, COLOR_YELLOW);
+    drawF(CUR_GetCenterF(step), 58, 2, COLOR_YELLOW);
     drawF(cursorBounds.end, 112, 2, COLOR_YELLOW);
     break;
   case BB_WATCH:
@@ -257,7 +257,7 @@ static void renderNumbers() {
 }
 
 static void render(bool wfDown) {
-  SP_Render(rangePeek(), 62, 30);
+  SP_Render(62, 30);
   WF_Render(wfDown);
 
   renderNumbers();
@@ -384,7 +384,7 @@ bool CheckKeys(void) {
     switch (key) {
     case KEY_MENU:
       if (rangesStackIndex < RANGES_STACK_SIZE - 1) {
-        rangePush(CUR_GetRange(rangePeek(), step));
+        rangePush(CUR_GetRange(step));
         init();
         return true;
       }
