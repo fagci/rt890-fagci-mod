@@ -91,7 +91,6 @@ static uint16_t ReadPixel() {
 void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
                         int16_t h) {
   int16_t n = w * h;
-  TMR1->ctrl1_bit.tmren = false;
   ST7735S_SendCommand(ST7735S_CMD_COLMOD);
   ST7735S_SendData(0x66);
   ST7735S_SetAddrWindow(x, y, x + w - 1, y + h - 1);
@@ -112,7 +111,6 @@ void ST7735S_ReadPixels(int16_t x, int16_t y, uint16_t *block, int16_t w,
 
   ST7735S_SendCommand(ST7735S_CMD_COLMOD);
   ST7735S_SendData(0x05);
-  TMR1->ctrl1_bit.tmren = true;
 }
 
 static void WritePixel(uint16_t Color) {
@@ -178,12 +176,12 @@ void ST7735S_Init(void) {
   ST7735S_SendCommand(ST7735S_CMD_SLPOUT);
   DELAY_WaitMS(120);
   ST7735S_SendCommand(ST7735S_CMD_FRMCTR1);
-  /* ST7735S_SendData(0x05);
+  ST7735S_SendData(0x05);
   ST7735S_SendData(0x3C);
-  ST7735S_SendData(0x3C); */
-  ST7735S_SendData(0x00);
+  ST7735S_SendData(0x3C);
+  /* ST7735S_SendData(0x00);
   ST7735S_SendData(0x06);
-  ST7735S_SendData(0x03);
+  ST7735S_SendData(0x03); */
   ST7735S_SendCommand(ST7735S_CMD_FRMCTR2);
   ST7735S_SendData(0x05);
   ST7735S_SendData(0x3C);
